@@ -1,19 +1,13 @@
-# Use an official Python runtime as a parent image
-FROM ubuntu:latest
 
-MAINTAINER Onur Dundar <onur.dundar1@gmail.com>
-
-# run update to get latest updates from repositories
-RUN apt-get update
-
-# install mosquitto into image
-RUN apt-get install -y mosquitto mosquitto-clients
-RUN apt-get install -y openssl
-
+# extra security configurations
+# hide password or use local file for it
+RUN mysqladmin --user=root password "123123"
+# root password, empty
 RUN mkdir /etc/mosquitto/passwords/ && touch /etc/mosquitto/passwords/mosquitto_pwd
 RUN mosquitto_passwd -U /etc/mosquitto/passwords/mosquitto_pwd
-RUN mosquitto_passwd -b /etc/mosquitto/passwords/mosquitto_pwd street_publisher simple_password
-RUN mosquitto_passwd -b /etc/mosquitto/passwords/mosquitto_pwd air_pollution_subscriber simple_password
+RUN mosquitto_passwd -b /etc/mosquitto/passwords/mosquitto_pwd street1 simple_password
+RUN mosquitto_passwd -b /etc/mosquitto/passwords/mosquitto_pwd street2 simple_password
+RUN mosquitto_passwd -b /etc/mosquitto/passwords/mosquitto_pwd street3 simple_password
 # or run in commandline with docker attach <container_id>, enter password from command line
 
 RUN cd /etc/mosquitto/ca_certificates
@@ -23,23 +17,25 @@ RUN openssl genrsa -out server.key 2048
 RUN echo 'TR\nCITY\nCMP\nSEC\nTT\nAA\na@a.com\nPASS_PHRASE\nCMP'openssl req -new -out server.csr -key server.key
 RUN echo 'PASS_PHRASE\n' \n openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 360
 
-# get certificate after running mqtt broker
-# docker cp <container-id>:/etc/mosquitto/ca_certificates/ca.crt
-
 RUN echo "keyfile /etc/mosquitto/ca_certificates/server.key" >> /etc/mosquitto/mosquitto.conf
 RUN echo "certfile /etc/mosquitto/ca_certificates/server.crt" >> /etc/mosquitto/mosquitto.conf
 RUN echo "tls_version tlsv1" >> /etc/mosquitto/mosquitto.conf
 
-# Make port 1883 and 9001 available.
+# Make port 1883 and 8883 available.
 # 1883 is MQTT port
 # 8883 is Secure MQTT port to be used
-EXPOSE 1883 8883
+# 3306 is for MySQL
+
+
+# get certificate after running mqtt broker
+# docker cp <container-id>:/etc/mosquitto/ca_certificates/ca.crt
 
 # how to run this to build an image
 # docker build --tag "mosquitto:base-image" --file /PATH/Dockerfile
 
 # how to run image inside a container.
-# docker run -d -p 1883:1883 -p 8883:8883 mosquitto:base-image
+# docker run -d -p 1883:1883 -p 8883:8883 -p 3306:3306 mosquitto:base-image
+# docker run -ti -p 1883:1883 -p 8883:8883 -p 3306:3306 mqtt_broker:latest
 
 # allow_anonymous true/false
 
